@@ -1,303 +1,186 @@
-# Fantasy Premier League Points Prediction
+# Fantasy Premier League Predictor
 
-> Machine learning system for predicting FPL player points using ensemble methods
+Machine learning-powered FPL squad optimizer with live predictions from the official FPL API. This project uses **safe-3seasons models** (trained on 2021–22 to 2023–24, evaluated on 2024–25) to predict player expected points and optimize a 15-player squad under a 100m budget.
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![ML](https://img.shields.io/badge/ML-Ensemble-green.svg)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+## Features
 
-## 🎯 Overview
+- 🔮 **Live predictions** – Fetch current FPL data and predict expected points for all players
+- 🧮 **Squad optimizer** – Find the optimal 15-player team (2 GK, 5 DEF, 5 MID, 3 FWD) under 100m budget
+- ⚽ **Starting XI suggestions** – Get recommended 4-3-3 formation with highest expected points
+- 📊 **Position-specific models** – Separate XGBoost models for GK, DEF, MID, FWD
 
-Predicts Fantasy Premier League player points using position-specific ensemble models (XGBoost + LightGBM + Random Forest) with advanced feature engineering.
+## Installation
 
-**Performance**: Models explain 89-97% of variance in player points (2024-25 test set)
+### Prerequisites
 
-## 🚀 Quick Start
+- Python 3.9 or higher
+- pip
+- virtualenv (recommended)
+
+### Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/gossbu666/fantasy-premier-league-fpl.git
+# Clone the repository
+git clone <your-repo-url>
 cd fantasy-premier-league-fpl
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Run web application
-python flask_app/app.py
-
-# Or use Streamlit
-streamlit run .streamlit/app.py
-```
-
-## 📂 Project Structure
-
-```
-fantasy-premier-league-fpl/
-├── .streamlit/              # Streamlit dashboard
-│   └── app.py
-│
-├── Prepare_Presentation/    # Project documentation & presentation
-│   ├── Data Collection & Preparation/
-│   ├── Feature Engineering/
-│   ├── Model Training & Optimization/
-│   ├── Model Evaluation/
-│   ├── Prediction & Deployment/
-│   ├── Squad Optimization/
-│   └── Utilities & Helpers/
-│
-├── analysis/                # Analysis notebooks & scripts
-│   ├── data_exploration.py
-│   ├── feature_analysis.py
-│   └── model_comparison.py
-│
-├── flask_app/               # Flask web application
-│   ├── app.py
-│   ├── templates/
-│   ├── static/
-│   └── utils/
-│
-├── notebooks/               # Jupyter notebooks
-│   ├── 01_data_collection.ipynb
-│   ├── 02_feature_engineering.ipynb
-│   └── 03_model_training.ipynb
-│
-├── src/                     # Source code
-│   ├── data/               # Data processing
-│   ├── features/           # Feature engineering
-│   ├── models/             # Model training
-│   ├── evaluation/         # Model evaluation
-│   ├── optimization/       # Squad optimization
-│   └── utils/              # Utility functions
-│
-├── requirements.txt
-└── README.md
-```
-
-## 📊 Model Performance (2024-25 Test Set)
-
-| Position | R² Score | RMSE |
-|----------|----------|------|
-| GK | 0.898 | 0.831 |
-| DEF | 0.891 | 0.856 |
-| MID | 0.948 | 0.537 |
-| FWD | 0.977 | 0.384 |
-
-**Interpretation**: Models explain 89-97% of variance in player points across all positions.
-
-## 💻 Usage
-
-### 1. Feature Engineering
-
-Build features for each position:
-
-```bash
-python src/features/build_gk_features.py
-python src/features/build_def_features.py
-python src/features/build_mid_features.py
-python src/features/build_fwd_features.py
-```
-
-### 2. Train Models
-
-```bash
-# Train with hyperparameter optimization
-python src/models/train_ensemble.py
-
-# Or tune hyperparameters separately
-python src/models/tune_optuna.py
-```
-
-### 3. Make Predictions
-
-```bash
-# Predict next gameweek
-python src/evaluation/predict_next_gw.py
-
-# Predict specific player
-python src/evaluation/predict_player.py --player_id 123
-```
-
-### 4. Optimize Squad
-
-```bash
-# Optimize squad under £100M budget
-python src/optimization/optimize_squad.py
-
-# Optimize transfers
-python src/optimization/optimize_transfers.py
-```
-
-### 5. Run Web App
-
-```bash
-# Flask app
-python flask_app/app.py
-# Access at http://localhost:5000
-
-# Streamlit dashboard
-streamlit run .streamlit/app.py
-# Access at http://localhost:8501
-```
-
-## ✨ Features
-
-### Machine Learning
-- ✅ Position-specific ensemble models
-- ✅ Hyperparameter optimization (Optuna)
-- ✅ Temporal cross-validation
-- ✅ Feature importance analysis
-
-### Feature Engineering
-- 🔄 Rolling statistics (3, 5, 10 games)
-- 📊 Form indicators & momentum
-- 🏟️ Home/away performance
-- 💪 Fixture difficulty rating (FDR)
-- ⚽ Expected goals (xG) & assists (xA)
-
-### Optimization
-- 🎯 Squad optimization (£100M budget)
-- 🔄 Transfer planning
-- ⚖️ Formation flexibility
-- 🔝 Captain selection
-
-### Deployment
-- 🌐 Flask REST API
-- 📱 Streamlit dashboard
-- 🔌 API endpoints
-- ☁️ Cloud-ready
-
-## 🔧 For Developers
-
-### Setup Development Environment
-
-```bash
-# Fork repository on GitHub
-git clone https://github.com/YOUR_USERNAME/fantasy-premier-league-fpl.git
-cd fantasy-premier-league-fpl
-
-# Create virtual environment
-python -m venv venv
+# Create and activate virtual environment
+python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Create feature branch
-git checkout -b feature/your-feature-name
 ```
 
-### Make Changes & Contribute
+## Project structure
+
+```text
+fantasy-premier-league-fpl/
+├── data/
+│   └── processed/
+│       └── players_predictions_live.csv   # Generated by refresh script
+├── flask_app/
+│   ├── app.py                            # Streamlit UI (main application)
+│   └── build_players_predictions_live.py # Data fetch and prediction script
+├── models/                               # Pre-trained ML models (*.pkl)
+│   ├── GK_safe_3seasons_train_202425_test.pkl
+│   ├── DEF_safe_3seasons_train_202425_test.pkl
+│   ├── MID_safe_3seasons_train_202425_test.pkl
+│   └── FWD_safe_3seasons_train_202425_test.pkl
+├── requirements.txt
+└── README.md
+```
+
+## Running the application
+
+### 1. Start the Streamlit app
+
+From the project root:
 
 ```bash
-# Make your changes
-# Test thoroughly
-
-# Commit changes
-git add .
-git commit -m "feat: Your feature description"
-
-# Push to your fork
-git push origin feature/your-feature-name
-
-# Create Pull Request on GitHub
+source venv/bin/activate
+cd flask_app
+streamlit run app.py
 ```
 
-### Development Workflow
+The app will open in your browser at `http://localhost:8501`.
 
-1. **Add Features**: Implement in `src/` with proper tests
-2. **Update Notebooks**: Document analysis in `notebooks/`
-3. **Update Web App**: Add UI in `flask_app/` or `.streamlit/`
-4. **Documentation**: Update relevant docs in `Prepare_Presentation/`
+### 2. Using the optimizer
 
-### To-Do List
+#### Step 1: Refresh live predictions
 
-- [ ] Add LSTM/Transformer models
-- [ ] Implement player injury prediction
-- [ ] Handle double gameweeks better
-- [ ] Add transfer market value prediction
-- [ ] Implement unit tests
-- [ ] Set up CI/CD pipeline
-- [ ] Add Docker support
-- [ ] Create mobile app
+Click **🔄 Refresh live predictions** to:
+- Fetch latest player data from the official FPL API
+- Generate features for all active players
+- Run position-specific machine learning models
+- Save predictions to `data/processed/players_predictions_live.csv`
 
-### Known Issues
+This may take 30–60 seconds depending on the number of active players.
 
-- API rate limiting during peak times
-- Double gameweek predictions need refinement
-- Need better fixture congestion handling
+#### Step 2: Optimize squad
 
-## 💻 Tech Stack
+Click **🧮 Optimize 100m squad** to:
+- Solve a mixed-integer linear program (MILP) that maximizes total expected points
+- Respect budget constraint (99m ≤ cost ≤ 100m to use budget efficiently)
+- Enforce squad composition: 2 GK, 5 DEF, 5 MID, 3 FWD
+- Limit to maximum 3 players per Premier League team
 
-**ML**: XGBoost, LightGBM, Random Forest, Optuna  
-**Web**: Flask, Streamlit  
-**Data**: Pandas, NumPy, Scikit-learn  
-**Optimization**: PuLP, SciPy  
-**Visualization**: Matplotlib, Seaborn, Plotly
+The optimizer returns:
+- **15-player squad** with total cost and aggregated expected points
+- **Suggested starting XI** in 4-3-3 formation with the highest predicted performers
 
-## 📚 Documentation
+## Model details
 
-Detailed documentation available in `Prepare_Presentation/`:
+### Training approach
 
-- **Data Collection & Preparation**: Data pipeline and preprocessing
-- **Feature Engineering**: Feature creation methodology
-- **Model Training & Optimization**: Training procedures and hyperparameter tuning
-- **Model Evaluation**: Performance metrics and validation
-- **Prediction & Deployment**: Deployment guide
-- **Squad Optimization**: Optimization algorithms
-- **Utilities & Helpers**: Helper functions and utilities
+- **Training data**: Seasons 2021–22, 2022–23, 2023–24
+- **Evaluation data**: Season 2024–25 (no data leakage)
+- **Model type**: XGBoost regressors (one per position)
+- **Features**: 
+  - Rolling averages (1, 3, 5, 10 gameweeks) of points, goals, assists, BPS, ICT metrics
+  - Team-level rolling statistics (goals scored, goals conceded)
+  - Fixture difficulty rating (FDR attack/defense)
+  - Player metadata (cost, position, team, opponent, home/away status)
 
-## 🤝 Contributing
+### Safe-3seasons methodology
 
-We welcome contributions! Please follow these steps:
+Models are trained **exclusively on past seasons** (2021–22 to 2023–24) and **never see 2024–25 data during training**. This ensures:
+- No data leakage from future information
+- Realistic performance evaluation on the current season
+- Production-ready predictions suitable for live gameweeks
 
+## Optimization constraints
+
+The MILP optimizer enforces official FPL squad rules:
+
+| Constraint | Value |
+|------------|-------|
+| Total budget | ≤ 100.0m |
+| Minimum spend | ≥ 99.0m |
+| Goalkeepers | 2 |
+| Defenders | 5 |
+| Midfielders | 5 |
+| Forwards | 3 |
+| Max per team | 3 |
+
+The objective is to **maximize the total predicted points** across all 15 players.
+
+## Troubleshooting
+
+### Error: "File not found: players_predictions_live.csv"
+
+Solution: Click **Refresh live predictions** first. This creates the required CSV file.
+
+### Refresh button fails with an error
+
+Check the error message displayed in the UI. Common causes:
+- FPL API is temporarily unavailable or rate-limiting requests
+- Missing model files in the `models/` directory
+- Missing Python packages (reinstall with `pip install -r requirements.txt`)
+
+### Optimizer returns no feasible solution
+
+- Verify the predictions file exists and contains valid data
+- Check if budget constraints are too restrictive
+- Try increasing `MIN_SPEND` or decreasing `BUDGET` in `flask_app/app.py`
+
+## Development
+
+### Adding custom features
+
+To extend the feature engineering pipeline:
+1. Edit the feature generation logic in `flask_app/build_players_predictions_live.py`
+2. Update position-specific feature builders if needed
+3. Retrain models with the new feature set
+
+### Retraining models
+
+Models were originally trained using `train_safe_3seasons_vs_202425.py`. To retrain:
+
+```bash
+python train_safe_3seasons_vs_202425.py
+```
+
+New models will be saved to the `models/` directory.
+
+## Contributing
+
+Contributions are welcome! Please:
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'feat: Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-### Commit Message Convention
+## License
 
-```
-feat: Add new feature
-fix: Fix bug
-docs: Update documentation
-style: Format code
-refactor: Refactor code
-test: Add tests
-chore: Update dependencies
-```
+Educational use. FPL data is sourced from the official Fantasy Premier League API.
 
-## 👥 Authors
+## Acknowledgments
 
-- **Shah Md Jobayer** - Model Development & Feature Engineering
-  - Email: st126404@ait.asia
-
-- **Supanut Kompayak** - Optimization & Web Development
-  - Email: st126055@ait.asia
-
-**Institution**: Asian Institute of Technology (AIT)  
-**Program**: Data Science and Artificial Intelligence
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [FPL Official API](https://fantasy.premierleague.com/api/) - Data source
-- [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) - Historical data
-- Understat - xG/xA statistics
-- FPL community on Reddit
-
-## 📞 Contact
-
-- **Issues**: [GitHub Issues](https://github.com/gossbu666/fantasy-premier-league-fpl/issues)
-- **Email**: st126055@ait.asia
-- **Repository**: https://github.com/gossbu666/fantasy-premier-league-fpl
+- [Fantasy Premier League](https://fantasy.premierleague.com/) for the official API
+- [PuLP](https://github.com/coin-or/pulp) for the linear programming solver
+- [Streamlit](https://streamlit.io/) for the web application framework
 
 ---
 
-**⚽ Happy Predicting! May your FPL rank climb high! 🏆**
-
-*Last Updated: December 2, 2025*
+**Disclaimer**: This optimizer provides expected points based on historical patterns and machine learning models. Actual FPL performance depends on many unpredictable factors (injuries, player form, tactical changes, rotation policy, etc.). Use predictions as guidance, not as guaranteed outcomes.
