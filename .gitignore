@@ -18,7 +18,14 @@ models/
 *.pkl
 *.joblib
 *.h5
-
+!models/GK_safe_3seasons_train_202425_test.pkl
+!models/DEF_safe_3seasons_train_202425_test.pkl
+!models/MID_safe_3seasons_train_202425_test.pkl
+!models/FWD_safe_3seasons_train_202425_test.pkl
+!models/GK_safe_3seasons_features.txt
+!models/DEF_safe_3seasons_features.txt
+!models/MID_safe_3seasons_features.txt
+!models/FWD_safe_3seasons_features.txt
 # Jupyter
 .ipynb_checkpoints/
 
