@@ -133,3 +133,4 @@ websocket-client==1.9.0
 widgetsnbextension==4.0.15
 xgboost==2.0.3
 zipp==3.23.0
+lightgbm==4.1.0
