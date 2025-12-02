@@ -7,7 +7,8 @@ import sys
 import pulp
 
 # -------- CONFIG --------
-PRED_PATH = Path("data/processed/players_predictions_live.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PRED_PATH = PROJECT_ROOT / "data" / "processed" / "players_predictions_live.csv"
 BUDGET = 100.0
 MIN_SPEND = 99.0   # force squad cost >= 99m to use budget efficiently
 
@@ -70,7 +71,12 @@ with col_refresh:
     if st.button("🔄 Refresh live predictions"):
         with st.spinner("Fetching FPL data and running models..."):
             cmd = [sys.executable, "build_players_predictions_live.py"]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            proc = subprocess.run(
+                cmd,
+                cwd=PROJECT_ROOT,        # รันจาก root ของโปรเจกต์
+                capture_output=True,
+                text=True,
+            )
             if proc.returncode != 0:
                 st.error("build_players_predictions_live.py failed:")
                 st.code(proc.stderr)
