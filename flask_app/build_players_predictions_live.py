@@ -13,6 +13,11 @@ import numpy as np
 import joblib
 from pathlib import Path
 
+# ---------------- PATH CONFIG (absolute from project root) ----------------
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MODELS_DIR = PROJECT_ROOT / "models"
+DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+
 API_BOOTSTRAP = "https://fantasy.premierleague.com/api/bootstrap-static/"
 
 POSITIONS = {
@@ -22,25 +27,25 @@ POSITIONS = {
     4: "FWD",
 }
 
+# เก็บแค่ชื่อไฟล์ โมเดล/ฟีเจอร์จริงอยู่ใน MODELS_DIR
 MODEL_INFO = {
     "GK": (
-        "models/GK_safe_3seasons_train_202425_test.pkl",
-        "models/GK_safe_3seasons_features.txt",
+        "GK_safe_3seasons_train_202425_test.pkl",
+        "GK_safe_3seasons_features.txt",
     ),
     "DEF": (
-        "models/DEF_safe_3seasons_train_202425_test.pkl",
-        "models/DEF_safe_3seasons_features.txt",
+        "DEF_safe_3seasons_train_202425_test.pkl",
+        "DEF_safe_3seasons_features.txt",
     ),
     "MID": (
-        "models/MID_safe_3seasons_train_202425_test.pkl",
-        "models/MID_safe_3seasons_features.txt",
+        "MID_safe_3seasons_train_202425_test.pkl",
+        "MID_safe_3seasons_features.txt",
     ),
     "FWD": (
-        "models/FWD_safe_3seasons_train_202425_test.pkl",
-        "models/FWD_safe_3seasons_features.txt",
+        "FWD_safe_3seasons_train_202425_test.pkl",
+        "FWD_safe_3seasons_features.txt",
     ),
 }
-
 
 def fetch_bootstrap():
     print("Fetching bootstrap-static from FPL API...")
@@ -48,7 +53,6 @@ def fetch_bootstrap():
     r.raise_for_status()
     data = r.json()
     return data
-
 
 def build_players_df(bootstrap_json: dict) -> pd.DataFrame:
     elements = pd.DataFrame(bootstrap_json["elements"])
@@ -95,14 +99,18 @@ def build_players_df(bootstrap_json: dict) -> pd.DataFrame:
     )
     return df
 
-
 def load_model_and_features(pos: str):
-    model_path, feat_path = MODEL_INFO[pos]
+    model_name, feat_name = MODEL_INFO[pos]
+    model_path = MODELS_DIR / model_name
+    feat_path = MODELS_DIR / feat_name
+
+    print(f"[{pos}] Loading model from: {model_path}")
+    print(f"[{pos}] Loading features from: {feat_path}")
+
     model = joblib.load(model_path)
     with open(feat_path) as f:
         feat_cols = [c for c in f.read().strip().split("\n") if c != "target"]
     return model, feat_cols
-
 
 def map_features_for_position(df_pos: pd.DataFrame, pos: str, feat_cols):
     """
@@ -151,13 +159,12 @@ def map_features_for_position(df_pos: pd.DataFrame, pos: str, feat_cols):
 
     # season/round ใส่ dummy ไว้ เฉย ๆ (โมเดลจะไม่สนถ้าไม่ได้ใช้เป็น feature จริง)
     if "season" in X.columns:
-        X["season"] = 2025.0  # dummy numeric / ถ้าเป็น object โมเดลจะไม่ใช้
+        X["season"] = 2025.0  # dummy numeric
     if "round" in X.columns:
         X["round"] = 1.0
 
     # ที่เหลือ (เช่น *_roll*) ปล่อย 0 ไว้
     return X.fillna(0.0)
-
 
 def main():
     bootstrap = fetch_bootstrap()
@@ -179,14 +186,13 @@ def main():
         X = map_features_for_position(df_pos, pos_name, feat_cols)
         raw_preds = model.predict(X.to_numpy())
 
-# heuristic scaling ให้สเกลเฉลี่ยใกล้ ๆ 4–5 แต้มต่อคน
+        # heuristic scaling ให้สเกลเฉลี่ยใกล้ ๆ 4–5 แต้มต่อคน
         SCALE = 0.25
         preds = raw_preds * SCALE
 
         df_pos["position"] = pos_name
         df_pos["predicted_points"] = preds
         df_pos["raw_predicted_points"] = raw_preds  # เผื่ออยาก debug ทีหลัง
-
 
         records.append(
             df_pos[
@@ -225,11 +231,10 @@ def main():
 
     df_out = pd.concat(records, ignore_index=True)
 
-    out_path = Path("data/processed/players_predictions_live.csv")
+    out_path = DATA_PROCESSED_DIR / "players_predictions_live.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df_out.to_csv(out_path, index=False)
     print(f"Saved live predictions to {out_path} ({len(df_out)} rows).")
-
 
 if __name__ == "__main__":
     main()
