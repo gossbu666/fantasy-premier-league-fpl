@@ -145,4 +145,4 @@ if st.button("🧮 Optimize 100m squad"):
         "Displayed values are rounded to integers for easier reading."
     )
 else:
-    st.info("Click **Optimize 100m squad** to generate a recommended team.")
+    st.info("Click **Optimize 100m squad** to generate a recommended team.") # test
