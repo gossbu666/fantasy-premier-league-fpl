@@ -8,6 +8,7 @@ import pulp
 
 # -------- CONFIG --------
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = PROJECT_ROOT / "flask_app" / "build_players_predictions_live.py"
 PRED_PATH = PROJECT_ROOT / "data" / "processed" / "players_predictions_live.csv"
 BUDGET = 100.0
 MIN_SPEND = 99.0   # force squad cost >= 99m to use budget efficiently
@@ -70,10 +71,9 @@ col_refresh, _ = st.columns([1, 4])
 with col_refresh:
     if st.button("🔄 Refresh live predictions"):
         with st.spinner("Fetching FPL data and running models..."):
-            cmd = [sys.executable, "build_players_predictions_live.py"]
+            cmd = [sys.executable, str(SCRIPT_PATH)]
             proc = subprocess.run(
                 cmd,
-                cwd=PROJECT_ROOT,        # รันจาก root ของโปรเจกต์
                 capture_output=True,
                 text=True,
             )
