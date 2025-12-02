@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Data (TOO LARGE)
+data/
+*.csv
+*.parquet
+*.xlsx
+
+# Models
+models/
+*.pkl
+*.joblib
+*.h5
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Secrets
+.env
+.env.local

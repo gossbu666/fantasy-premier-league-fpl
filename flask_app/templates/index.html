@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="POST" action="/predict">
+    <div class="form-group">
+        <label for="position">Position</label>
+        <select name="position" id="position">
+            <option value="ALL">All Positions</option>
+            <option value="GK">Goalkeeper (GK)</option>
+            <option value="DEF">Defender (DEF)</option>
+            <option value="MID">Midfielder (MID)</option>
+            <option value="FWD">Forward (FWD)</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="max_cost">Maximum Cost (£m)</label>
+        <input type="number" name="max_cost" id="max_cost" value="15.0" step="0.1" min="4.0" max="15.0">
+    </div>
+    <div class="form-group">
+        <label for="min_points">Minimum Predicted Points</label>
+        <input type="number" name="min_points" id="min_points" value="0" step="0.5" min="0" max="20">
+    </div>
+    <button type="submit" class="btn">🔮 Predict Points</button>
+</form>
+<div style="margin-top: 40px; padding: 20px; background: #f0f9ff; border-radius: 10px;">
+    <h3 style="color: #0369a1; margin-bottom: 10px;">How it works:</h3>
+    <ol style="color: #0c4a6e; line-height: 1.8;">
+        <li>Select position filter and cost constraints</li>
+        <li>Click "Predict Points" to get predictions</li>
+        <li>View top recommended players based on ML predictions</li>
+        <li>Make informed FPL transfer decisions!</li>
+    </ol>
+</div>
+{% endblock %}

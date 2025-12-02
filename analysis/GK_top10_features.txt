@@ -1,0 +1,10 @@
+minutes_avg_3gw
+minutes_avg_5gw
+minutes_avg_10gw
+bps_avg_3gw
+bps_avg_5gw
+bps_avg_10gw
+ict_index_avg_3gw
+ict_index_avg_5gw
+ict_index_avg_10gw
+total_points_avg_3gw

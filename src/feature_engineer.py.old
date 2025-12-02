@@ -1,0 +1,231 @@
+"""
+Feature Engineering for FPL Predictions
+STRICT TEMPORAL ORDERING - NO DATA LEAKAGE
+Preserves round column for proper temporal splitting
+"""
+
+import pandas as pd
+import numpy as np
+from utils import logger
+
+def create_rolling_features(data, horizons=[1, 3, 5, 10]):
+    """
+    Create rolling average features WITHOUT data leakage
+    Uses shift(1) to ensure no current gameweek information
+    """
+    
+    features = pd.DataFrame(index=data.index)
+    
+    # Sort by player and round (CRITICAL!)
+    data = data.sort_values(['player_id', 'round']).copy()
+    
+    # Metrics to create rolling features
+    metrics = ['total_points', 'minutes', 'goals_scored', 'assists', 
+               'clean_sheets', 'goals_conceded', 'bonus', 'bps',
+               'influence', 'creativity', 'threat', 'ict_index']
+    
+    # Add position-specific metrics
+    if 'saves' in data.columns:
+        metrics.append('saves')
+    if 'value' in data.columns:
+        metrics.append('value')
+    if 'selected' in data.columns:
+        metrics.append('selected')
+    if 'transfers_in' in data.columns:
+        metrics.extend(['transfers_in', 'transfers_out'])
+    
+    # Create rolling features with SHIFT(1)
+    for metric in metrics:
+        if metric not in data.columns:
+            continue
+            
+        for horizon in horizons:
+            col_name = f'{metric}_avg_{horizon}gw'
+            
+            # CRITICAL: shift(1) ensures we only use PAST gameweeks
+            features[col_name] = data.groupby('player_id')[metric].transform(
+                lambda x: x.shift(1).rolling(window=horizon, min_periods=1).mean()
+            )
+    
+    logger.info(f"   ✓ Created {len(features.columns)} rolling features")
+    
+    return features
+
+def create_features(data, position):
+    """Create all features for a position - NO LEAKAGE"""
+    
+    logger.info(f"Creating features for {position}...")
+    
+    # Sort first
+    data = data.sort_values(['player_id', 'round']).reset_index(drop=True)
+    
+    # Initialize with metadata (KEEP FOR SPLITTING!)
+    features = pd.DataFrame(index=data.index)
+    features['player_id'] = data['player_id'].values
+    features['round'] = data['round'].values  # CRITICAL: Keep for temporal split!
+    
+    # Check if we have player names
+    if 'player_name' in data.columns:
+        features['player_name'] = data['player_name'].values
+    
+    # Target variable (NOT A FEATURE!)
+    features['target'] = data['total_points'].values
+    
+    # Rolling features (all with shift!)
+    rolling = create_rolling_features(data)
+    features = pd.concat([features, rolling], axis=1)
+    
+    # FDR features (CURRENT fixture - OK to use!)
+    if 'fdr_attack' in data.columns:
+        features['fdr_attack'] = data['fdr_attack'].values
+        features['fdr_defense'] = data['fdr_defense'].values
+        features['is_home'] = data['is_home'].astype(int).values
+        logger.info("   ✓ Added FDR features")
+    
+    # Remove first gameweek (no historical data)
+    initial_len = len(features)
+    features = features[features['round'] > 1].copy()
+    logger.info(f"   ✓ Removed GW1: {initial_len - len(features)} rows")
+    
+    # Drop rows with missing target
+    features = features.dropna(subset=['target'])
+    
+    # Fill remaining NaN with 0
+    logger.info(f"✓ Final samples: {len(features)}")
+    if 'round' in features.columns:
+        logger.info(f"✓ Gameweeks in features: {features['round'].min():.0f} to {features['round'].max():.0f}")
+    else:
+        logger.error("❌ ERROR: 'round' column missing in features!")
+
+    
+    return features
+
+def prepare_features(features_df, position):
+    """Prepare features for model training"""
+    
+    # Separate components
+    metadata_cols = ['target', 'player_id', 'player_name', 'round']
+    X = features_df.drop(metadata_cols, axis=1, errors='ignore')
+    y = features_df['target']
+    rounds = features_df['round'].values
+    player_ids = features_df['player_id'].values
+    
+    logger.info(f"✓ Prepared {len(X.columns)} features")
+    logger.info(f"✓ Target range: {y.min():.1f} to {y.max():.1f} points")
+    logger.info(f"✓ Gameweeks: {rounds.min():.0f} to {rounds.max():.0f}")
+    logger.info(f"✓ Unique players: {len(np.unique(player_ids))}")
+    
+    return X, y, rounds, player_ids
+
+def calculate_sample_weights(y):
+    """Calculate sample weights emphasizing high scorers"""
+    
+    def categorize(points):
+        if points == 0:
+            return 'zero'
+        elif points <= 2:
+            return 'blank'
+        elif points <= 4:
+            return 'ticker'
+        else:
+            return 'hauler'
+    
+    categories = y.apply(categorize)
+    
+    weights = categories.map({
+        'zero': 0.5,
+        'blank': 1.0,
+        'ticker': 1.5,
+        'hauler': 3.0
+    })
+    
+    return weights
+
+def process_position(position):
+    """Process features for one position"""
+    
+    from sklearn.preprocessing import MinMaxScaler
+    import joblib
+    from pathlib import Path
+    
+    logger.info("="*60)
+    logger.info(f"Processing {position} data (NO LEAKAGE)")
+    logger.info("="*60)
+    
+    # Load
+    data_file = f'data/processed/{position}_data.csv'
+    data = pd.read_csv(data_file)
+    logger.info(f"✓ Loaded {len(data)} records")
+    
+    # Create features
+    features = create_features(data, position)
+    
+    # Prepare
+    X, y, rounds, player_ids = prepare_features(features, position)
+    
+    # Normalize features (but NOT metadata!)
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X)
+    X_scaled = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
+    
+    logger.info("✓ Normalized features")
+    
+    # Sample weights
+    sample_weights = calculate_sample_weights(y)
+    logger.info(f"✓ Sample weights: mean={sample_weights.mean():.2f}")
+    
+    # Combine ALL (features + target + metadata)
+# Combine with explicit index reset
+    result = pd.DataFrame(X_scaled.values, columns=X_scaled.columns)
+    result['target'] = y.values
+    result['sample_weight'] = sample_weights.values
+    result['round'] = rounds  # From prepare_features
+    result['player_id'] = player_ids  # From prepare_features
+
+    # Debug: verify columns
+    logger.info(f"  Columns before save: {list(result.columns)[-5:]}")
+    assert 'round' in result.columns, f"ERROR: round not in columns! Have: {result.columns.tolist()}"
+    assert 'player_id' in result.columns, "ERROR: player_id not in columns!"
+
+    
+    # Verify
+    logger.info(f"  Final columns: {list(result.columns)[:5]}... +{len(result.columns)-5} more")
+    assert 'target' in result.columns, "Missing target!"
+    assert 'round' in result.columns, "Missing round!"
+    assert 'player_id' in result.columns, "Missing player_id!"
+    
+    # Save
+    output_file = f'data/processed/{position}_features.csv'
+    result.to_csv(output_file, index=False)
+    logger.info(f"✓ Saved to {output_file}")
+    
+    # Save scaler
+    Path('models').mkdir(exist_ok=True)
+    joblib.dump(scaler, f'models/{position}_preprocessor.pkl')
+    logger.info(f"✓ Saved preprocessor")
+    
+    logger.info(f"✓ {position} complete!\n")
+
+def main():
+    """Main pipeline"""
+    
+    logger.info("="*80)
+    logger.info("FEATURE ENGINEERING - PHASE 2 (NO LEAKAGE + METADATA PRESERVED)")
+    logger.info("="*80)
+    
+    positions = ['GK', 'DEF', 'MID', 'FWD']
+    
+    for position in positions:
+        try:
+            process_position(position)
+        except Exception as e:
+            logger.error(f"✗ Error: {position}: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    logger.info("="*80)
+    logger.info("✓ PHASE 2 COMPLETE!")
+    logger.info("="*80)
+
+if __name__ == '__main__':
+    main()

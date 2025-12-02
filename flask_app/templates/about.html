@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="line-height: 1.8; color: #333;">
+    <h2 style="color: #37003c; margin-bottom: 20px;">About This Project</h2>
+    <section style="margin-bottom: 30px;">
+        <h3 style="color: #667eea; margin-bottom: 10px;">Overview</h3>
+        <p>FPL Points Predictor uses ensemble machine learning models to predict Fantasy Premier League points.</p>
+    </section>
+    <section style="margin-bottom: 30px;">
+        <h3 style="color: #667eea; margin-bottom: 10px;">Methodology</h3>
+        <ul style="list-style-position: inside; padding-left: 20px;">
+            <li><strong>Data:</strong> Historical FPL (2021-2024)</li>
+            <li><strong>Models:</strong> XGBoost + Random Forest Ensemble</li>
+            <li><strong>Features:</strong> 83 engineered features</li>
+            <li><strong>Optimization:</strong> Optuna tuning</li>
+        </ul>
+    </section>
+    <section>
+        <h3 style="color: #667eea; margin-bottom: 10px;">Deployment</h3>
+        <p>Deployed on AWS EC2 using Flask (DSAI Lab Week 14 methodology)</p>
+    </section>
+</div>
+{% endblock %}

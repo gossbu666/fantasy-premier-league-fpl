@@ -1,0 +1,5 @@
+minutes_avg_3gw
+bps_avg_3gw
+ict_index_avg_3gw
+total_points_avg_3gw
+influence_avg_3gw

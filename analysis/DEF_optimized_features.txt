@@ -1,0 +1,15 @@
+bps_avg_10gw
+minutes_avg_10gw
+minutes_avg_5gw
+bps_avg_5gw
+ict_index_avg_10gw
+influence_avg_10gw
+minutes_avg_3gw
+total_points_avg_10gw
+bps_avg_3gw
+ict_index_avg_5gw
+influence_avg_5gw
+ict_index_avg_3gw
+total_points_avg_5gw
+consistency_10gw
+clean_sheets_avg_10gw

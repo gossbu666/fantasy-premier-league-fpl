@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: #dbeafe; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+    <h2 style="color: #1e40af; margin-bottom: 10px;">Predictions for Gameweek {{ gameweek }}</h2>
+    <p style="color: #1e3a8a;">
+        Showing top 20 players {% if position != 'ALL' %}({{ position }} only){% endif %}
+        | Total matching: {{ total_players }} players | Max cost: £{{ max_cost }}m
+    </p>
+</div>
+<table>
+    <thead>
+        <tr>
+            <th>#</th><th>Player</th><th>Team</th><th>Position</th>
+            <th>Cost</th><th>Predicted Points</th><th>Form</th><th>Selected By</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for player in players %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ player.name }}</strong></td>
+            <td>{{ player.team }}</td>
+            <td><span class="position-badge {{ player.position }}">{{ player.position }}</span></td>
+            <td>£{{ player.cost }}m</td>
+            <td><strong style="color: #059669;">{{ player.predicted_points }}</strong></td>
+            <td>{{ player.form }}</td>
+            <td>{{ player.selected_by }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div style="margin-top: 30px; text-align: center;">
+    <a href="/" style="display: inline-block; padding: 12px 30px; background: #667eea; 
+       color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+        ← Make Another Prediction
+    </a>
+</div>
+{% endblock %}

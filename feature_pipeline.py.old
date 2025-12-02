@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""
+Feature engineering pipeline
+"""
+
+import sys
+from pathlib import Path
+
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent / 'src'))
+
+from preprocessing import process_position_data
+from utils import logger
+
+def main():
+    logger.info("="*80)
+    logger.info("EPL FANTASY FEATURE ENGINEERING - PHASE 2")
+    logger.info("="*80)
+    
+    positions = ['GK', 'DEF', 'MID', 'FWD']
+    
+    for position in positions:
+        try:
+            output_df = process_position_data(position)
+            logger.info(f"✓ {position} processing complete!")
+        except Exception as e:
+            logger.error(f"✗ Error processing {position}: {e}")
+            continue
+    
+    logger.info("\n" + "="*80)
+    logger.info("✓ PHASE 2 COMPLETE!")
+    logger.info("="*80)
+    logger.info("\nGenerated files:")
+    logger.info("  data/processed/GK_features.csv")
+    logger.info("  data/processed/DEF_features.csv")
+    logger.info("  data/processed/MID_features.csv")
+    logger.info("  data/processed/FWD_features.csv")
+    logger.info("  models/GK_preprocessor.pkl")
+    logger.info("  models/DEF_preprocessor.pkl")
+    logger.info("  models/MID_preprocessor.pkl")
+    logger.info("  models/FWD_preprocessor.pkl")
+    logger.info("\nNext: PHASE 3 - Model Training")
+
+if __name__ == '__main__':
+    main()
+

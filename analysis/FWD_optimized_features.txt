@@ -1,0 +1,12 @@
+minutes_avg_5gw
+minutes_avg_10gw
+ict_index_avg_10gw
+minutes_avg_3gw
+total_points_avg_10gw
+ict_index_avg_5gw
+total_points_avg_5gw
+threat_avg_10gw
+ict_index_avg_3gw
+influence_avg_10gw
+bps_avg_10gw
+threat_avg_5gw
