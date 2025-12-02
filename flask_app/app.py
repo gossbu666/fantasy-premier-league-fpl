@@ -1,180 +1,142 @@
-"""
-FPL Points Predictor - Flask Web Application
-"""
-
-from flask import Flask, render_template, request
+#!/usr/bin/env python3
+import streamlit as st
 import pandas as pd
-import numpy as np
-import joblib
-import requests
 from pathlib import Path
+import subprocess
+import sys
+import pulp
 
-app = Flask(__name__)
+# -------- CONFIG --------
+PRED_PATH = Path("data/processed/players_predictions_live.csv")
+BUDGET = 100.0
+MIN_SPEND = 99.0   # force squad cost >= 99m to use budget efficiently
 
-# Simple wrapper for loaded models
-class SimplePredictor:
-    def __init__(self, model):
-        self.model = model
-    
-    def predict(self, X):
-        return self.model.predict(X)
 
-def load_models():
-    """Load trained models"""
-    models = {}
-    
-    for position in ['GK', 'DEF', 'MID', 'FWD']:
-        try:
-            # Try tuned first, then regular
-            for suffix in ['_tuned', '']:
-                model_path = f'../models/{position}_ensemble{suffix}.pkl'
-                if Path(model_path).exists():
-                    raw_model = joblib.load(model_path)
-                    models[position] = SimplePredictor(raw_model)
-                    print(f"✓ Loaded {position} model{suffix}")
-                    break
-        except Exception as e:
-            print(f"✗ Error loading {position}: {e}")
-    
-    return models
+def load_players(path=PRED_PATH):
+    df = pd.read_csv(path)
+    df["cost_m"] = df["now_cost"] / 10.0
+    return df
 
-def get_fpl_data():
-    """Fetch current FPL data"""
-    try:
-        response = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/', timeout=10)
-        data = response.json()
-        
-        current_gw = next((gw['id'] for gw in data['events'] if gw['is_current']), 13)
-        
-        players_df = pd.DataFrame(data['elements'])
-        teams_df = pd.DataFrame(data['teams'])
-        
-        team_map = dict(zip(teams_df['id'], teams_df['name']))
-        players_df['team_name'] = players_df['team'].map(team_map)
-        
-        position_map = {1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD'}
-        players_df['position_name'] = players_df['element_type'].map(position_map)
-        
-        return current_gw, players_df
-    except Exception as e:
-        print(f"Error fetching FPL data: {e}")
-        return None, None
 
-def prepare_features(player_row):
-    """Prepare features - simplified version"""
-    # Create 83 features (matching training)
-    feature_array = np.zeros(83)
-    
-    # Fill with available data
-    features = [
-        player_row.get('minutes', 0),
-        player_row.get('goals_scored', 0),
-        player_row.get('assists', 0),
-        player_row.get('clean_sheets', 0),
-        player_row.get('goals_conceded', 0),
-        player_row.get('bonus', 0),
-        player_row.get('bps', 0),
-        float(player_row.get('influence', 0)),
-        float(player_row.get('creativity', 0)),
-        float(player_row.get('threat', 0)),
-        float(player_row.get('ict_index', 0)),
-        float(player_row.get('form', 0)),
-        float(player_row.get('selected_by_percent', 0)),
-        player_row.get('now_cost', 0) / 10,
-    ]
-    
-    feature_array[:len(features)] = features
-    return feature_array
+def optimize_team(df, budget=BUDGET, min_spend=MIN_SPEND):
+    idx = list(df.index)
+    x = pulp.LpVariable.dicts("pick", idx, lowBound=0, upBound=1, cat="Binary")
 
-def predict_all_players(models, players_df):
-    """Predict points for all players"""
-    predictions = []
-    
-    for idx, player in players_df.iterrows():
-        try:
-            position = player['position_name']
-            if position in models:
-                X = prepare_features(player).reshape(1, -1)
-                predicted_points = models[position].predict(X)[0]
-                
-                predictions.append({
-                    'id': player['id'],
-                    'name': player['web_name'],
-                    'team': player['team_name'],
-                    'position': position,
-                    'cost': player['now_cost'] / 10,
-                    'predicted_points': round(float(predicted_points), 2),
-                    'form': float(player['form']),
-                    'selected_by': float(player['selected_by_percent'])
-                })
-        except Exception as e:
-            print(f"Error predicting {player['web_name']}: {e}")
-    
-    return pd.DataFrame(predictions)
+    model = pulp.LpProblem("FPL_Optimize_100m", pulp.LpMaximize)
 
-# Load models on startup
-print("Loading models...")
-MODELS = load_models()
-print(f"Loaded {len(MODELS)} models")
+    # objective: maximize predicted points
+    model += pulp.lpSum(x[i] * df.loc[i, "predicted_points"] for i in idx)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    # budget constraints
+    model += pulp.lpSum(x[i] * df.loc[i, "cost_m"] for i in idx) <= budget
+    model += pulp.lpSum(x[i] * df.loc[i, "cost_m"] for i in idx) >= min_spend
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    global MODELS
-    
-    try:
-        if not MODELS:
-            return render_template('error.html', 
-                                 error="No models loaded. Please check model files.")
-        
-        position_filter = request.form.get('position', 'ALL')
-        max_cost = float(request.form.get('max_cost', 15.0))
-        min_points = float(request.form.get('min_points', 0))
-        
-        print("Fetching FPL data...")
-        current_gw, all_players = get_fpl_data()
-        
-        if all_players is None:
-            return render_template('error.html', 
-                                 error="Failed to fetch FPL data. Please try again.")
-        
-        print("Making predictions...")
-        predictions = predict_all_players(MODELS, all_players)
-        
-        if len(predictions) == 0:
-            return render_template('error.html',
-                                 error="No predictions generated. Check model compatibility.")
-        
-        filtered = predictions.copy()
-        
-        if position_filter != 'ALL':
-            filtered = filtered[filtered['position'] == position_filter]
-        
-        filtered = filtered[filtered['cost'] <= max_cost]
-        filtered = filtered[filtered['predicted_points'] >= min_points]
-        filtered = filtered.sort_values('predicted_points', ascending=False)
-        
-        top_players = filtered.head(20)
-        
-        return render_template('results.html',
-                             gameweek=current_gw,
-                             players=top_players.to_dict('records'),
-                             total_players=len(filtered),
-                             position=position_filter,
-                             max_cost=max_cost)
-    
-    except Exception as e:
-        print(f"Prediction error: {e}")
-        import traceback
-        traceback.print_exc()
-        return render_template('error.html', error=f"Prediction failed: {str(e)}")
+    # squad size by position
+    for pos, count in [("GK", 2), ("DEF", 5), ("MID", 5), ("FWD", 3)]:
+        model += (
+            pulp.lpSum(x[i] for i in idx if df.loc[i, "position"] == pos) == count
+        )
 
-@app.route('/about')
-def about():
-    return render_template('about.html')
+    # max 3 per real team
+    for team_id in df["team"].unique():
+        model += (
+            pulp.lpSum(x[i] for i in idx if df.loc[i, "team"] == team_id) <= 3
+        )
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    model.solve(pulp.PULP_CBC_CMD(msg=False))
+    picked = [i for i in idx if x[i].value() == 1]
+
+    team_df = df.loc[picked].copy()
+    team_df["cost_m"] = team_df["cost_m"].round(1)
+    total_cost = team_df["cost_m"].sum()
+    total_points = team_df["predicted_points"].sum()
+    return team_df, total_cost, total_points
+
+
+# -------- STREAMLIT APP --------
+st.set_page_config(page_title="FPL Optimizer 100m", layout="wide")
+st.title("🔮 FPL Optimizer – Budget 100m")
+
+st.markdown(
+    "This tool uses **safe-3seasons models** (trained on 2021–22 to 2023–24, "
+    "evaluated on 2024–25) to predict expected points for current FPL players "
+    "from the official API, then finds a 15-player squad that maximizes expected "
+    "points for the next gameweek under a **100m** budget "
+    "(2 GK, 5 DEF, 5 MID, 3 FWD, max 3 players per real team)."
+)
+
+col_refresh, _ = st.columns([1, 4])
+with col_refresh:
+    if st.button("🔄 Refresh live predictions"):
+        with st.spinner("Fetching FPL data and running models..."):
+            cmd = [sys.executable, "build_players_predictions_live.py"]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                st.error("build_players_predictions_live.py failed:")
+                st.code(proc.stderr)
+            else:
+                st.success("Updated players_predictions_live.csv ✅")
+                st.expander("Logs (stdout/stderr)").code(
+                    proc.stdout + "\n" + proc.stderr
+                )
+
+st.markdown("---")
+
+if not PRED_PATH.exists():
+    st.error(f"File not found: {PRED_PATH}. Click **Refresh live predictions** first.")
+    st.stop()
+
+df = load_players(PRED_PATH)
+
+if st.button("🧮 Optimize 100m squad"):
+    with st.spinner("Solving optimization problem..."):
+        team_df, total_cost, total_points = optimize_team(
+            df, budget=BUDGET, min_spend=MIN_SPEND
+        )
+
+    st.subheader("Optimized squad (15 players)")
+    st.write(
+        f"Total cost (15): **{total_cost:.1f} m**  |  "
+        f"Total expected points (15): **{total_points:.2f}**"
+    )
+
+    # sort and create integer display points
+    show_df = (
+        team_df[
+            ["position", "web_name", "team_name", "cost_m", "predicted_points"]
+        ]
+        .sort_values(["position", "predicted_points"], ascending=[True, False])
+        .reset_index(drop=True)
+    )
+    show_df["expected_points"] = show_df["predicted_points"].round(0).astype(int)
+
+    st.dataframe(
+        show_df[["position", "web_name", "team_name", "cost_m", "expected_points"]],
+        use_container_width=True,
+    )
+
+    # -------- STARTING XI 4-3-3 --------
+    st.subheader("Suggested starting XI (4-3-3)")
+
+    gk_start = show_df[show_df["position"] == "GK"].nlargest(1, "predicted_points")
+    def_start = show_df[show_df["position"] == "DEF"].nlargest(4, "predicted_points")
+    mid_start = show_df[show_df["position"] == "MID"].nlargest(3, "predicted_points")
+    fwd_start = show_df[show_df["position"] == "FWD"].nlargest(3, "predicted_points")
+
+    xi_df = pd.concat([gk_start, def_start, mid_start, fwd_start], ignore_index=True)
+    xi_points = xi_df["predicted_points"].sum()
+    xi_points_rounded = int(round(xi_points))
+    xi_df["expected_points"] = xi_df["predicted_points"].round(0).astype(int)
+
+    st.write(f"Total expected points (XI): **{xi_points_rounded}**")
+    st.dataframe(
+        xi_df[["position", "web_name", "team_name", "cost_m", "expected_points"]],
+        use_container_width=True,
+    )
+
+    st.caption(
+        "Expected points are per-gameweek values from the production-scaled model. "
+        "Displayed values are rounded to integers for easier reading."
+    )
+else:
+    st.info("Click **Optimize 100m squad** to generate a recommended team.")
